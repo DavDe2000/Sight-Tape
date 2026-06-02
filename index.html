@@ -266,22 +266,26 @@
     letter-spacing: 0.5px;
   }
 
-  .pdf-btn {
-    width: 100%;
+  .btn-row {
+    display: flex; gap: 10px;
+    margin-top: 0.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .pdf-btn, .tape-btn {
+    flex: 1;
     background: none;
     border: 1px solid var(--accent);
     border-radius: var(--radius);
     padding: 12px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--accent);
     font-family: 'Syne', sans-serif;
-    margin-top: 0.25rem;
-    margin-bottom: 1rem;
     transition: all 0.15s;
   }
-  .pdf-btn:hover { background: var(--accent-dim); }
+  .pdf-btn:hover, .tape-btn:hover { background: var(--accent-dim); }
 
   footer {
     text-align: center;
@@ -290,6 +294,126 @@
     color: var(--text-muted);
     font-family: 'DM Mono', monospace;
   }
+
+  /* ── TAPE PRINT OVERLAY ── */
+  #tape-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #tape-overlay.open { display: flex; }
+
+  #tape-modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    width: min(420px, 94vw);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .modal-title {
+    font-size: 13px; font-weight: 700;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .close-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 18px;
+    padding: 2px 6px; border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .close-btn:hover { color: var(--text); }
+
+  .tape-info {
+    font-size: 12px; color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    border-left: 2px solid var(--accent);
+  }
+
+  .tape-options {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-bottom: 1rem;
+  }
+
+  .tape-opt label {
+    display: block;
+    font-size: 10px; color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+
+  .tape-opt input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 7px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .tape-opt input:focus { border-color: var(--accent); }
+
+  /* preview */
+  #tape-preview-wrap {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    margin-bottom: 1rem;
+    display: flex; justify-content: center;
+    overflow: hidden;
+  }
+
+  #tape-svg-preview svg {
+    display: block;
+  }
+
+  .print-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    padding: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f1117;
+    font-family: 'Syne', sans-serif;
+    transition: opacity 0.15s;
+  }
+  .print-btn:hover { opacity: 0.9; }
+
+  /* ── PRINT STYLES ── */
+  @media print {
+    body > *:not(#print-frame) { display: none !important; }
+    #print-frame {
+      display: block !important;
+      position: fixed; inset: 0;
+      background: white;
+    }
+  }
+  #print-frame { display: none; }
 </style>
 </head>
 <body>
@@ -319,15 +443,15 @@
     <div class="params-grid">
       <div class="param-block">
         <label>PAS (m)</label>
-        <input type="number" id="step" value="5" min="1">
+        <input type="number" id="step" value="1" min="1">
       </div>
       <div class="param-block">
         <label>DIST. MIN (m)</label>
-        <input type="number" id="dmin" value="10" min="1">
+        <input type="number" id="dmin" value="15" min="1">
       </div>
       <div class="param-block">
         <label>DIST. MAX (m)</label>
-        <input type="number" id="dmax" value="70" min="1">
+        <input type="number" id="dmax" value="45" min="1">
       </div>
     </div>
   </div>
@@ -359,16 +483,55 @@
       </table>
     </div>
 
-    <button class="pdf-btn" onclick="exportPDF()">↓ Exporter en PDF</button>
+    <div class="btn-row">
+      <button class="pdf-btn" onclick="exportPDF()">↓ PDF</button>
+      <button class="tape-btn" onclick="openTapeModal()">✂ Tape imprimable</button>
+    </div>
 
   </div>
 </main>
 
 <footer>arcviseur · compound bow sight calculator</footer>
 
+<!-- TAPE MODAL -->
+<div id="tape-overlay" onclick="closeTapeIfOutside(event)">
+  <div id="tape-modal">
+    <div class="modal-header">
+      <span class="modal-title">Sight Tape — impression</span>
+      <button class="close-btn" onclick="closeTapeModal()">✕</button>
+    </div>
+
+    <div class="tape-info">
+      Le tape est à l'échelle 1:1 — chaque millimètre sur l'impression correspond à 1 mm réel.<br>
+      Imprime sans mise à l'échelle (100%), découpe et colle sur le rail de ton viseur.
+    </div>
+
+    <div class="tape-options">
+      <div class="tape-opt">
+        <label>LARGEUR TAPE (mm)</label>
+        <input type="number" id="tape-width" value="12" min="6" max="30" onchange="renderTapePreview()">
+      </div>
+      <div class="tape-opt">
+        <label>NOM / ARC</label>
+        <input type="text" id="tape-name" placeholder="ex: Arc 1" oninput="renderTapePreview()">
+      </div>
+    </div>
+
+    <div id="tape-preview-wrap">
+      <div id="tape-svg-preview"></div>
+    </div>
+
+    <button class="print-btn" onclick="printTape()">🖨 Imprimer le tape</button>
+  </div>
+</div>
+
+<!-- hidden print frame -->
+<div id="print-frame"></div>
+
 <script>
-  let points = [{d:20,mm:''},{d:60,mm:''}];
+  let points = [{d:15,mm:''},{d:25,mm:''},{d:35,mm:''},{d:45,mm:''}];
   let chartInstance = null;
+  let lastRows = [];
 
   function renderPoints() {
     const el = document.getElementById('points-list');
@@ -443,6 +606,7 @@
         rows.push({d:x,mm:Math.round(ys[i]*10)/10,isRef:true});
     });
     rows.sort((a,b)=>a.d-b.d);
+    lastRows = rows;
 
     const tbody=document.getElementById('results-tbody');
     tbody.innerHTML='';
@@ -532,6 +696,185 @@
     document.getElementById('results').style.display='block';
     document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
   }
+
+  // ─── TAPE MODAL ───────────────────────────────────────────────
+
+  function openTapeModal() {
+    if (lastRows.length === 0) return;
+    document.getElementById('tape-overlay').classList.add('open');
+    renderTapePreview();
+  }
+
+  function closeTapeModal() {
+    document.getElementById('tape-overlay').classList.remove('open');
+  }
+
+  function closeTapeIfOutside(e) {
+    if (e.target === document.getElementById('tape-overlay')) closeTapeModal();
+  }
+
+  /**
+   * Builds the tape SVG.
+   * The tape is vertical. The position of each graduation along the tape
+   * corresponds literally to its mm value (1 SVG unit = 1 mm, rendered at 96dpi → 1mm).
+   * We map mm values so that the smallest mm value is at the TOP of the tape
+   * and the largest is at the BOTTOM (viseur physique: plus loin = curseur plus bas = mm plus grand).
+   */
+  function buildTapeSVG(rows, tapeWidthMM, arcName, forPrint) {
+    if (!rows || rows.length === 0) return '';
+
+    const mmValues = rows.map(r => r.mm);
+    const mmMin = Math.min(...mmValues);
+    const mmMax = Math.max(...mmValues);
+    const span  = mmMax - mmMin;           // total mm span on the tape
+    if (span <= 0) return '';
+
+    const PX_PER_MM = 3.7795275591;       // 96dpi: 1mm = 3.7795… px — used only for screen preview
+    // For print we use mm directly via SVG viewBox + physical size attribute
+
+    const paddingMM = 6;                  // top & bottom padding on tape
+    const totalHeightMM = span + paddingMM * 2;
+    const W = tapeWidthMM;
+    const H = totalHeightMM;
+
+    // Layout inside tape width
+    const tickLongMM  = W * 0.45;
+    const tickShortMM = W * 0.28;
+    const textXMM     = W * 0.52;
+    const fontSizeMM  = Math.max(2.2, Math.min(3.0, W * 0.22));
+    const labelFontMM = Math.max(1.8, fontSizeMM * 0.72);
+
+    let svgLines = [];
+
+    // background
+    svgLines.push(`<rect width="${W}" height="${H}" fill="white"/>`);
+
+    // border
+    svgLines.push(`<rect x="0.3" y="0.3" width="${W-0.6}" height="${H-0.6}" fill="none" stroke="#999" stroke-width="0.4" rx="1"/>`);
+
+    // title / arc name
+    if (arcName) {
+      svgLines.push(`<text x="${W/2}" y="${paddingMM - 1.2}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${labelFontMM}" font-weight="bold" fill="#888">${escXML(arcName)}</text>`);
+    }
+
+    // center tick line (axis)
+    svgLines.push(`<line x1="1" y1="${paddingMM}" x2="1" y2="${H - paddingMM}" stroke="#ccc" stroke-width="0.25"/>`);
+
+    // graduations
+    rows.forEach(r => {
+      // y position: mmMin at top (paddingMM), mmMax at bottom (H - paddingMM)
+      const y = paddingMM + (r.mm - mmMin);
+      const isRef = r.isRef;
+      const tickLen = isRef ? tickLongMM : tickShortMM;
+      const strokeW = isRef ? 0.5 : 0.3;
+      const color   = isRef ? '#111' : '#555';
+
+      svgLines.push(`<line x1="1" y1="${y}" x2="${1 + tickLen}" y2="${y}" stroke="${color}" stroke-width="${strokeW}"/>`);
+
+      if (isRef) {
+        svgLines.push(`<text x="${textXMM}" y="${y + fontSizeMM*0.36}" font-family="Arial, sans-serif" font-size="${fontSizeMM}" font-weight="bold" fill="#111">${r.d}m</text>`);
+      } else {
+        svgLines.push(`<text x="${textXMM}" y="${y + labelFontMM*0.36}" font-family="Arial, sans-serif" font-size="${labelFontMM}" fill="#555">${r.d}m</text>`);
+      }
+    });
+
+    // cut marks at corners
+    const cm = 1.5;
+    const cutColor = '#bbb';
+    const cutW = '0.3';
+    [0, H].forEach(cy => {
+      [0, W].forEach(cx => {
+        const dx = cx === 0 ? 1 : -1;
+        const dy = cy === 0 ? 1 : -1;
+        svgLines.push(`<line x1="${cx}" y1="${cy + dy*cm}" x2="${cx}" y2="${cy}" stroke="${cutColor}" stroke-width="${cutW}"/>`);
+        svgLines.push(`<line x1="${cx}" y1="${cy}" x2="${cx + dx*cm}" y2="${cy}" stroke="${cutColor}" stroke-width="${cutW}"/>`);
+      });
+    });
+
+    const scaledW = forPrint ? W  : W  * PX_PER_MM;
+    const scaledH = forPrint ? H  : H  * PX_PER_MM;
+
+    const widthAttr  = forPrint ? `${W}mm`  : `${scaledW}px`;
+    const heightAttr = forPrint ? `${H}mm`  : `${scaledH}px`;
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${widthAttr}" height="${heightAttr}">${svgLines.join('')}</svg>`;
+  }
+
+  function escXML(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function renderTapePreview() {
+    const w    = Math.max(6, Math.min(30, +document.getElementById('tape-width').value || 12));
+    const name = document.getElementById('tape-name').value;
+    const svg  = buildTapeSVG(lastRows, w, name, false);
+    document.getElementById('tape-svg-preview').innerHTML = svg;
+  }
+
+  function printTape() {
+    const w    = Math.max(6, Math.min(30, +document.getElementById('tape-width').value || 12));
+    const name = document.getElementById('tape-name').value;
+    const svg  = buildTapeSVG(lastRows, w, name, true);
+
+    const mmValues = lastRows.map(r => r.mm);
+    const span = Math.max(...mmValues) - Math.min(...mmValues);
+    const totalH = span + 12;
+
+    const printContent = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Sight Tape — ArcViseur</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .header {
+    font-family: Arial, sans-serif;
+    font-size: 9pt;
+    color: #888;
+    margin-bottom: 6mm;
+  }
+  .header strong { color: #333; }
+  .tape-wrap {
+    display: inline-block;
+  }
+  .note {
+    font-family: Arial, sans-serif;
+    font-size: 7.5pt;
+    color: #aaa;
+    margin-top: 6mm;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <strong>ArcViseur</strong> — Sight Tape · Imprimer à 100%, sans mise à l'échelle
+  </div>
+  <div class="tape-wrap">${svg}</div>
+  <div class="note">Découper le long des repères de coupe aux coins · ${new Date().toLocaleDateString('fr-FR')}</div>
+</body>
+</html>`;
+
+    const frame = document.getElementById('print-frame');
+    // open a new window for print to avoid CSS conflicts
+    const win = window.open('', '_blank', 'width=600,height=800');
+    win.document.write(printContent);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
+  }
+
+  // ─── PDF (unchanged) ─────────────────────────────────────────
 
   function exportPDF() {
     const rows = [];
