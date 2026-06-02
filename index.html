@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArcViseur — Calculateur de réglages</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2335;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8eaf0;
+    --text-muted: #7a8099;
+    --accent: #c8a96e;
+    --accent-dim: rgba(200,169,110,0.15);
+    --accent-dim2: rgba(200,169,110,0.08);
+    --blue: #5b8fce;
+    --blue-dim: rgba(91,143,206,0.15);
+    --danger: #c0504a;
+    --danger-dim: rgba(192,80,74,0.12);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header {
+    padding: 2rem 1.25rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .logo-icon svg { width: 18px; height: 18px; fill: #0f1117; }
+
+  h1 {
+    font-size: 20px; font-weight: 700;
+    color: var(--text); letter-spacing: -0.3px;
+  }
+
+  .subtitle {
+    font-size: 12px; color: var(--text-muted);
+    font-family: 'DM Mono', monospace; letter-spacing: 0.5px;
+  }
+
+  main { padding: 1.25rem; max-width: 520px; margin: 0 auto; }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.125rem;
+    margin-bottom: 1rem;
+  }
+
+  .section-label {
+    font-size: 11px; font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 14px;
+  }
+
+  .point-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .input-group {
+    flex: 1;
+    display: flex; align-items: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+
+  .input-group:focus-within { border-color: var(--accent); }
+
+  .input-group span {
+    font-size: 11px; color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    padding: 0 8px;
+    white-space: nowrap;
+  }
+
+  .input-group input {
+    flex: 1; min-width: 0;
+    background: transparent;
+    border: none; outline: none;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    padding: 9px 8px 9px 0;
+    width: 100%;
+  }
+
+  .arrow-sep {
+    font-size: 14px; color: var(--border2);
+    flex-shrink: 0;
+  }
+
+  .del-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    width: 32px; height: 36px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .del-btn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-dim); }
+
+  .add-btn {
+    width: 100%;
+    background: var(--accent-dim2);
+    border: 1px dashed rgba(200,169,110,0.3);
+    border-radius: var(--radius-sm);
+    padding: 9px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    margin-top: 6px;
+    transition: all 0.15s;
+  }
+
+  .add-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
+
+  .params-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  .param-block label {
+    display: block;
+    font-size: 10px; color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+
+  .param-block input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .param-block input:focus { border-color: var(--accent); }
+
+  .calc-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    padding: 13px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f1117;
+    font-family: 'Syne', sans-serif;
+    letter-spacing: 0.2px;
+    margin-bottom: 1rem;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .calc-btn:hover { opacity: 0.9; }
+  .calc-btn:active { transform: scale(0.98); }
+
+  .error {
+    font-size: 13px; color: var(--danger);
+    background: var(--danger-dim);
+    border: 1px solid rgba(192,80,74,0.25);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 1rem;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .chart-wrap {
+    position: relative;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 8px 4px 4px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+  }
+
+  thead th {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr { transition: background 0.1s; }
+  tbody tr:hover { background: var(--surface2); }
+
+  tbody td {
+    padding: 8px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  tbody tr.ref td { color: var(--text); }
+  tbody tr.ref td:first-child { color: var(--accent); font-weight: 500; }
+  tbody tr.ref td:nth-child(2) { color: var(--accent); }
+
+  .badge {
+    font-size: 9px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(200,169,110,0.3);
+    border-radius: 4px;
+    padding: 2px 6px;
+    letter-spacing: 0.5px;
+  }
+
+  footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-12c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
+      </svg>
+    </div>
+    <h1>ArcViseur</h1>
+  </div>
+  <p class="subtitle">calculateur de réglages — arc à poulies</p>
+</header>
+
+<main>
+
+  <div class="section" style="margin-top:1.25rem">
+    <div class="section-label">Points de référence</div>
+    <div id="points-list"></div>
+    <button class="add-btn" onclick="addPoint()">+ Ajouter une distance</button>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Paramètres de calcul</div>
+    <div class="params-grid">
+      <div class="param-block">
+        <label>PAS (m)</label>
+        <input type="number" id="step" value="5" min="1">
+      </div>
+      <div class="param-block">
+        <label>DIST. MIN (m)</label>
+        <input type="number" id="dmin" value="10" min="1">
+      </div>
+      <div class="param-block">
+        <label>DIST. MAX (m)</label>
+        <input type="number" id="dmax" value="70" min="1">
+      </div>
+    </div>
+  </div>
+
+  <button class="calc-btn" onclick="calculate()">↳ Calculer les réglages</button>
+
+  <div id="error" style="display:none"></div>
+
+  <div id="results" style="display:none">
+
+    <div class="section">
+      <div class="section-label">Courbe de visée</div>
+      <div class="chart-wrap">
+        <canvas id="myChart" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Tableau des réglages</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Distance</th>
+            <th>Réglage</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+    </div>
+
+  </div>
+</main>
+
+<footer>arcviseur · compound bow sight calculator</footer>
+
+<script>
+  let points = [{d:20,mm:''},{d:60,mm:''}];
+  let chartInstance = null;
+
+  function renderPoints() {
+    const el = document.getElementById('points-list');
+    el.innerHTML = '';
+    points.forEach((p, i) => {
+      const row = document.createElement('div');
+      row.className = 'point-row';
+      row.innerHTML = `
+        <div class="input-group" style="max-width:110px">
+          <input type="number" placeholder="dist." value="${p.d}" min="1" onchange="points[${i}].d=+this.value">
+          <span>m</span>
+        </div>
+        <span class="arrow-sep">→</span>
+        <div class="input-group">
+          <input type="number" placeholder="valeur" value="${p.mm}" step="0.1" onchange="points[${i}].mm=this.value===''?'':+this.value">
+          <span>mm</span>
+        </div>
+        <button class="del-btn" onclick="removePoint(${i})" title="Supprimer">✕</button>
+      `;
+      el.appendChild(row);
+    });
+  }
+
+  function addPoint() { points.push({d:'',mm:''}); renderPoints(); }
+  function removePoint(i) { if (points.length > 2) { points.splice(i,1); renderPoints(); } }
+
+  function spline(xs, ys, x) {
+    const n = xs.length;
+    if (n === 1) return ys[0];
+    if (n === 2) return ys[0] + (x-xs[0])/(xs[1]-xs[0])*(ys[1]-ys[0]);
+    const h=[],alpha=[],l=[],mu=[],z=[],c=[],b=[],d=[];
+    for (let i=0;i<n-1;i++) h[i]=xs[i+1]-xs[i];
+    for (let i=1;i<n-1;i++) alpha[i]=3/h[i]*(ys[i+1]-ys[i])-3/h[i-1]*(ys[i]-ys[i-1]);
+    l[0]=1;mu[0]=0;z[0]=0;
+    for (let i=1;i<n-1;i++){l[i]=2*(xs[i+1]-xs[i-1])-h[i-1]*mu[i-1];mu[i]=h[i]/l[i];z[i]=(alpha[i]-h[i-1]*z[i-1])/l[i];}
+    l[n-1]=1;z[n-1]=0;c[n-1]=0;
+    for (let j=n-2;j>=0;j--){c[j]=z[j]-mu[j]*c[j+1];b[j]=(ys[j+1]-ys[j])/h[j]-h[j]*(c[j+1]+2*c[j])/3;d[j]=(c[j+1]-c[j])/(3*h[j]);}
+    let seg=n-2;
+    for (let i=0;i<n-1;i++) if(x>=xs[i]&&x<=xs[i+1]){seg=i;break;}
+    const dx=x-xs[seg];
+    return ys[seg]+b[seg]*dx+c[seg]*dx*dx+d[seg]*dx*dx*dx;
+  }
+
+  function calculate() {
+    const errEl = document.getElementById('error');
+    errEl.style.display='none';
+    document.getElementById('results').style.display='none';
+
+    const valid = points.filter(p=>p.d!==''&&p.mm!==''&&!isNaN(+p.d)&&!isNaN(+p.mm)&&+p.d>0);
+    if (valid.length < 2) {
+      errEl.className='error';
+      errEl.textContent='⚠ Entrez au moins 2 points de référence valides.';
+      errEl.style.display='block';
+      return;
+    }
+
+    valid.sort((a,b)=>+a.d - +b.d);
+    const xs=valid.map(p=>+p.d), ys=valid.map(p=>+p.mm);
+    const step=+document.getElementById('step').value||5;
+    const dmin=+document.getElementById('dmin').value;
+    const dmax=+document.getElementById('dmax').value;
+    const refSet=new Set(xs.map(String));
+
+    const rows=[];
+    for (let d=dmin; d<=dmax+0.001; d+=step) {
+      const rd=Math.round(d);
+      const mm=Math.round(spline(xs,ys,rd)*10)/10;
+      rows.push({d:rd,mm,isRef:refSet.has(String(rd))});
+    }
+    xs.forEach((x,i)=>{
+      if((x<dmin||x>dmax)&&!rows.find(r=>r.d===x))
+        rows.push({d:x,mm:Math.round(ys[i]*10)/10,isRef:true});
+    });
+    rows.sort((a,b)=>a.d-b.d);
+
+    const tbody=document.getElementById('results-tbody');
+    tbody.innerHTML='';
+    rows.forEach(r=>{
+      const tr=document.createElement('tr');
+      if(r.isRef) tr.className='ref';
+      tr.innerHTML=`<td>${r.d} m</td><td>${r.mm.toFixed(1)} mm</td><td>${r.isRef?'<span class="badge">réf</span>':''}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    const labels=rows.map(r=>r.d+'m');
+    const data=rows.map(r=>r.mm);
+    const refPoints=rows.map(r=>r.isRef?r.mm:null);
+
+    if(chartInstance) chartInstance.destroy();
+    const ctx=document.getElementById('myChart').getContext('2d');
+    chartInstance=new Chart(ctx,{
+      type:'line',
+      data:{
+        labels,
+        datasets:[
+          {
+            label:'Réglage interpolé',
+            data,
+            borderColor:'#5b8fce',
+            backgroundColor:'rgba(91,143,206,0.08)',
+            fill:true,
+            borderWidth:2,
+            pointRadius:0,
+            pointHoverRadius:4,
+            tension:0.4,
+            order:2
+          },
+          {
+            label:'Point de référence',
+            data:refPoints,
+            borderColor:'#c8a96e',
+            backgroundColor:'#c8a96e',
+            borderWidth:0,
+            pointRadius:6,
+            pointHoverRadius:8,
+            pointStyle:'circle',
+            showLine:false,
+            order:1
+          }
+        ]
+      },
+      options:{
+        responsive:true,
+        plugins:{
+          legend:{
+            labels:{
+              color:'#7a8099',
+              font:{size:11,family:'DM Mono'},
+              boxWidth:10,
+              padding:16
+            }
+          },
+          tooltip:{
+            backgroundColor:'#1e2335',
+            borderColor:'rgba(255,255,255,0.1)',
+            borderWidth:1,
+            titleColor:'#e8eaf0',
+            bodyColor:'#7a8099',
+            titleFont:{family:'Syne',size:13},
+            bodyFont:{family:'DM Mono',size:12},
+            callbacks:{
+              label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} mm`
+            }
+          }
+        },
+        scales:{
+          x:{
+            ticks:{color:'#7a8099',font:{size:10,family:'DM Mono'},maxRotation:45},
+            grid:{color:'rgba(255,255,255,0.05)'},
+            title:{display:true,text:'Distance (m)',color:'#7a8099',font:{size:11,family:'Syne'}}
+          },
+          y:{
+            ticks:{color:'#7a8099',font:{size:10,family:'DM Mono'},callback:v=>v.toFixed(0)+' mm'},
+            grid:{color:'rgba(255,255,255,0.05)'},
+            title:{display:true,text:'Réglage viseur (mm)',color:'#7a8099',font:{size:11,family:'Syne'}}
+          }
+        }
+      }
+    });
+
+    document.getElementById('results').style.display='block';
+    document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  renderPoints();
+</script>
+</body>
+</html>
